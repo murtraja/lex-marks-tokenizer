@@ -4,7 +4,7 @@ SEAT_NUMERIC	[0-9]{9}
 SEAT_NO			{YEAR_SYMBOL}{SEAT_NUMERIC}" "
 
 PRN 			[0-9]{8}[A-Z]
-SNAME 			([A-Z&]+" "){2,}
+SNAME 			([A-Z&.]+" "){2,}
 				/* student name or subject name */
 SUB_CODE 		[0-9]{6}" "
 MARKS_FIXED		([0-9]+" "){2}
@@ -19,10 +19,10 @@ MARKS 			([0-9]+)|(AA)
 	BEGIN(STUDENT_INFO);
 <READ_REMAINING_LINE>{
 .*\n 		{ 	
-				printf("%d:%d\n",YYSTATE,STUDENT_INFO);
+				/*printf("%d:%d\n",YYSTATE,STUDENT_INFO);*/
 				yy_pop_state();
-				/* popping the read remaining line state */
-				printf("%d:%d\n",YYSTATE,STUDENT_INFO);
+				/* popping the read remaining line state 
+				printf("%d:%d\n",YYSTATE,STUDENT_INFO); */
 			}
 				
 }
@@ -40,6 +40,7 @@ MARKS 			([0-9]+)|(AA)
 			}
 }
 <MARKS_SEM_ONE>{
+			
 {SUB_CODE}	printf("%s, ",yytext);
 {SNAME}		{
 				printf("%s, ",yytext);
@@ -50,7 +51,20 @@ MARKS 			([0-9]+)|(AA)
 					/* need to separate passing marks from total marks */
 					printf("%s, ",yytext);
 				}
-{MARKS} 		printf("%s\n", yytext); yy_push_state(READ_REMAINING_WORDS);
+{MARKS} 		printf("%s\n", yytext); yy_push_state(MARKS_SEM_TWO); yy_push_state(READ_REMAINING_WORDS);
+}
+<MARKS_SEM_TWO>{
+{SUB_CODE}	printf("%s, ",yytext);
+{SNAME}		{
+				printf("%s, ",yytext);
+				/* the last 2 characters specify PP|PR|OR|TW */
+				printf("%s, ",yytext+yyleng-3);
+			}
+{MARKS_FIXED} 	{
+					/* need to separate passing marks from total marks */
+					printf("%s, ",yytext);
+				}
+{MARKS} 		printf("%s\n", yytext); yy_push_state(MARKS_SEM_ONE); yy_push_state(READ_REMAINING_LINE);
 }
 <READ_REMAINING_WORDS>{
 ([A-Z]+" ")+	printf("skipping: %s\n",yytext); yy_pop_state();
