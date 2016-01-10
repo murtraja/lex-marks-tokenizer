@@ -26,8 +26,10 @@ int *MARKS_SEM_TWO;
         -1; when invalid or not applicable
         1; when 1st semester entry is tokenized
         2; when 2nd semester
+    CURRENT_STUDENT:
+        keeps track of how many students are completed in a page
 */
-int SEM_ONE_SUB = 0, SEM_TWO_SUB = 0, CURRENT_SEM=-1;
+int SEM_ONE_SUB = 0, SEM_TWO_SUB = 0, CURRENT_SEM=-1, CURRENT_STUDENT=1;
 
 /*  so the idea is to reduce code redundancy
     therefore i decided to create this function
@@ -55,14 +57,17 @@ SNAME           ([A-Z&.]+" "){2,}
 SUB_CODE        [0-9]{6}" "
 MARKS_FIXED     ([0-9]+" "){2}
 MARKS           ([0-9]+)|(AA)
+DOTS            [.]{2,}\n
 
+%s PAGE_START
+%s COLUMN_NAMES
 %s STUDENT_INFO
 %s MARKS_ENTRY
 %s READ_REMAINING_LINE
 %s READ_REMAINING_WORDS
 %s RESULT
 %%
-    BEGIN(STUDENT_INFO);
+    BEGIN(PAGE_START);
 <READ_REMAINING_LINE>{
 .*\n        {   
                 /*printf("%d:%d\n",YYSTATE,STUDENT_INFO);*/
@@ -71,6 +76,20 @@ MARKS           ([0-9]+)|(AA)
                 printf("%d:%d\n",YYSTATE,STUDENT_INFO); */
             }
                 
+}
+    /*  the reason to make two separate states just for the 7 line header is that
+        the initial header has valuable information like branch and stuff which can
+        be tokenized. so just to separate it, this approach is followed
+    */
+<PAGE_START>{
+{DOTS}          {
+                    BEGIN(COLUMN_NAMES);
+                }
+}
+<COLUMN_NAMES>{
+{DOTS}          {
+                    BEGIN(STUDENT_INFO);
+                }
 }
 <STUDENT_INFO>{
 {SEAT_NO}   printf("%s, ",yytext);
@@ -137,7 +156,7 @@ MARKS           ([0-9]+)|(AA)
 }
 <RESULT>{
 "GRAND TOTAL".*\n       /*printf("---------%s\n", yytext);*/
-[.]+                    {
+{DOTS}                  {
                             /*printf("%s\n", yytext);*/
                             printf("\n");
                             int i =0;
@@ -146,11 +165,24 @@ MARKS           ([0-9]+)|(AA)
                                 analysis whereby each sem marks
                                 are printed side by side
                             */
+                            /*
                             for(i=0; i<TOTAL_SEM_ONE_SUB; i++)
                             {
                                 printf("%d\t%d\n",MARKS_SEM_ONE[i], MARKS_SEM_TWO[i]);
                             }
-                            yy_push_state(STUDENT_INFO);
+                            */
+                            CURRENT_STUDENT++;
+                            if(CURRENT_STUDENT>3)
+                            {
+                                /*  ok the page is over
+                                    time to reiterate
+                                */
+                                BEGIN(PAGE_START);
+                            }
+                            else{
+                            BEGIN(STUDENT_INFO);
+                                
+                            }
                         }
 }
 .|"\n"
